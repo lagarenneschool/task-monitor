@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Popup</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 15px;
+            font-family: Arial, sans-serif;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .logout {
+            cursor: pointer;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-form" class="form-group">
+        <label for="code">Enter Code:</label>
+        <input type="password" class="form-control" id="code">
+        <button id="submit" class="btn btn-primary mt-2">Submit</button>
+    </div>
+
+    <div id="admin-welcome" class="hidden">
+        <h4>Welcome, admin</h4>
+        <p class="logout">Logout</p>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
