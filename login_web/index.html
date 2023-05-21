@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+    <title>LGTM | Login</title>
+
+</head>
+<body>
+  <div class="box">
+    <div class="container">
+
+        <div class="top">
+            <span>Have an account?</span>
+            <header>LG Task Monitor - Login</header>
+        </div>
+
+        <div class="input-field">
+            <input type="text" class="input" placeholder="Username" id="username">
+            <i class='bx bx-user' ></i>
+        </div>
+
+        <div class="input-field">
+            <input type="Password" class="input" placeholder="Password" id="password">
+            <i class='bx bx-lock-alt'></i>
+        </div>
+
+        <div class="error-message" style="color: red; display: none;" id="error-message"></div>
+
+        <div class="input-field">
+            <input type="submit" class="submit" value="Login" id="submit">
+        </div>
+        
+        <div class="welcome-message" style="display: none;">
+            <span>Welcome, <span id="username-welcome"></span>.</span>
+            <div class="loading-animation"></div>
+        </div>
+
+        <div class="loading-overlay">
+            <div class="loading-animation"></div>
+            <div class="loading-text" id="loading-text">Loading...</div>
+        </div>        
+
+        <div class="two-col">
+            <div class="one">
+               <input type="checkbox" name="" id="check">
+               <label for="check"> Remember Me</label>
+            </div>
+            <div class="two">
+                <label><a href="#">Forgot password?</a></label>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    const submitButton = document.getElementById('submit');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    const errorMessage = document.getElementById('error-message');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loadingText = document.getElementById('loading-text');
+
+    submitButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+
+        // Simple validation
+        if (username === 'admin' && password === 'password') {
+            // If the credentials are correct, show the loading overlay
+            errorMessage.style.display = 'none';
+            loadingOverlay.style.opacity = '1';
+            loadingOverlay.style.pointerEvents = 'all';
+
+            setTimeout(function() {
+                // Show welcome message
+                loadingText.textContent = 'Welcome, ' + username + '.';
+
+                setTimeout(function() {
+                    // After 3 seconds, redirect to another page
+                    window.location.href = 'mgmt_console.html';  // Replace 'welcome.html' with your page
+                }, 3000);
+            }, 3500);  // The loading overlay will continue to be displayed
+        } else {
+            // If the credentials are incorrect, show an error message
+            errorMessage.textContent = 'Incorrect username or password';
+            errorMessage.style.display = 'block';
+        }
+    });
+</script>
+
+
+
+</body>
+</html>

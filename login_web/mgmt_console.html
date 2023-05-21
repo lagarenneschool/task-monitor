@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Management Console</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            padding: 40px 20px 20px 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            font-size: 24px;
+        }
+        .refresh-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .refresh-button:hover {
+            background-color: #45a049;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .user-bar {
+            display: flex;
+            align-items: center;
+            margin: 30px auto 10px auto;
+            padding: 10px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.05);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin-right: 10px;
+        }
+        .status {
+            margin: 20px;
+        }
+        .last-updated {
+            text-align: right;
+            padding: 10px;
+            font-size: 14px;
+            color: #777;
+        }
+        .status-green {
+            background-color: #6abf69;
+        }
+        .status-orange {
+            background-color: #ffa500;
+        }
+        .status-red {
+            background-color: #ff5a5a;
+        }
+        .status-blue {
+            background-color: rgb(96, 96, 245);
+        }
+    </style>
+</head>
+<body>
+    <h1>Management Console</h1>
+    <button class="refresh-button" onclick="fetchStatus()">Refresh Status</button>
+    <div id="lastUpdated" class="last-updated"></div>
+    <div class="status" id="status"></div>
+    <div class="exception-panel">
+        <input type="text" id="exceptionUserid" placeholder="User ID">
+        <input type="number" id="exceptionDuration" placeholder="Duration (minutes)">
+        <button onclick="setException()">Set Exception</button>
+    </div>
+    <script>
+        function fetchStatus() {
+            let now = new Date();
+            document.getElementById('lastUpdated').innerText = `Last updated: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+            fetch('http://178.198.237.37:3000/m5-status')
+            .then(response => response.json())
+            .then(data => {
+                let statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '';
+                for (let user of data) {
+                    let userDiv = document.createElement('div');
+                    let currentTime = Date.now();
+                    let status = user.status;
+                    let userid = user.username;  // Fetch username from the user object
+                    if (currentTime - Date.parse(user.gracePeriodEnd) > 10 * 60 * 1000) { // 10 minutes
+                        status = 'offline';
+                    }
+                    else if (exceptions[userid] && Date.now() < exceptions[userid]) {
+                        status = 'exception';
+                    }
+                    userDiv.classList.add('user-bar');
+                    if (status === 'ontask') {
+                        userDiv.classList.add('status-green');
+                    } else if (status === 'grace') {
+                        userDiv.classList.add('status-orange');
+                    } else if (status === 'exception') {
+                        userDiv.classList.add('status-blue');
+                    } else if (status === 'offtask') {
+                        userDiv.classList.add('status-red');
+                        notifyUserOffTask(userid);
+                    }
+                    userDiv.innerHTML = `
+                        <img class="user-avatar" src="avatar_${userid}.png" alt="User avatar">
+                        <div class="user-info">
+                            <span class="user-id"><strong>User:</strong> ${userid}</span>
+                            <span class="status-text"><strong>Status:</strong> ${status}</span>
+                        </div>`;
+                    statusDiv.appendChild(userDiv);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+
+        function notifyUserOffTask(userid) {
+            // Check if the browser supports notifications
+            if (!("Notification" in window)) {
+                alert("This browser does not support system notifications");
+            }
+            // Check whether notification permissions have already been granted
+            else if (Notification.permission === "granted") {
+                // If it's okay, let's create a notification
+                let notification = new Notification(`User ${userid} is off task!`);
+            }
+            // Otherwise, we need to ask the user for permission
+            else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(function (permission) {
+                    // If the user accepts, let's create a notification
+                    if (permission === "granted") {
+                        let notification = new Notification(`User ${userid} is off task!`);
+                    }
+                }); 
+            }
+        }
+
+        let exceptions = {};
+
+        function setException() {
+            let userid = document.getElementById('exceptionUserid').value;
+            let duration = document.getElementById('exceptionDuration').value;
+            exceptions[userid] = Date.now() + duration * 60 * 1000;  // current time + duration
+        }
+
+        fetchStatus();
+        setInterval(fetchStatus, 10 * 1000);  // Refresh status every minute
+
+    </script>
+</body>
+</html>
