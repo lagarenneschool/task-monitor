@@ -1,122 +1,155 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Management Console</title>
+    <title>LG Task Management Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Poppins', sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 40px 0 0 0; /* Change the top padding here */
             background-color: #f5f5f5;
-            color: #333;
-        }
-        h1 {
             text-align: center;
-            padding: 40px 20px 20px 20px;
-            background-color: #f5f5f5;
-            color: #333;
-            margin: 0;
-            font-size: 24px;
+            animation: fade-up 2s ease;
         }
-        .refresh-button {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s, box-shadow 0.3s;
+
+        h1 {
+            margin-bottom: 2rem;
+            color: #444;
+            font-weight: 600;
+            margin: 0 0 60px 0;
         }
-        .refresh-button:hover {
-            background-color: #45a049;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+        #status {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 2rem;
+            width: 80%;
+            margin-bottom: 2rem;
         }
+
         .user-bar {
             display: flex;
             align-items: center;
-            margin: 30px auto 10px auto;
-            padding: 10px;
+            margin: 60px 0 10px 20px;  /* top, right, bottom, left */
+            padding: 0.6rem;  /* smaller padding, less height */
             background-color: white;
-            border-radius: 20px;
+            border-radius: 50px;
             box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.05);
+            animation: fade-up 2s ease;
         }
+
+
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 100px;
+            height: 50px;
             border-radius: 50%;
             background-color: #ccc;
-            margin-right: 10px;
+            margin-right: 1rem;
         }
-        .status {
-            margin: 20px;
+
+        .status-text {
+            color: #aaa;
         }
-        .last-updated {
-            text-align: right;
-            padding: 10px;
-            font-size: 14px;
-            color: #777;
+
+        button {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Status Colors */
         .status-green {
-            background-color: #6abf69;
+            border-left: 5px solid #6abf69;
         }
+
         .status-orange {
-            background-color: #ffa500;
+            border-left: 5px solid #ffa500;
         }
+
         .status-red {
-            background-color: #ff5a5a;
+            border-left: 5px solid #ff5a5a;
         }
-        .status-blue {
-            background-color: rgb(96, 96, 245);
+
+        .disclaimer {
+            margin-top: 50px;
+            font-size: 14px;
+            padding: 0 20px;
+            color: #666;
+            text-align: center;
+            animation: fade-up 5s ease;
+        } 
+
+        @keyframes fade-up {
+            0% {
+               opacity: 0;
+               transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
+        #lastUpdated {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
     </style>
 </head>
 <body>
-    <h1>Management Console</h1>
-    <button class="refresh-button" onclick="fetchStatus()">Refresh Status</button>
-    <div id="lastUpdated" class="last-updated"></div>
+    <h1>LG Task Management Console</h1>
+    <button onclick="fetchStatus()">Refresh Status</button>
+    <div id="lastUpdated"></div>
     <div class="status" id="status"></div>
-    <div class="exception-panel">
-        <input type="text" id="exceptionUserid" placeholder="User ID">
-        <input type="number" id="exceptionDuration" placeholder="Duration (minutes)">
-        <button onclick="setException()">Set Exception</button>
-    </div>
     <script>
         function fetchStatus() {
-            let now = new Date();
-            document.getElementById('lastUpdated').innerText = `Last updated: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-            fetch('http://178.198.237.37:3000/m5-status')
+            fetch('http://10.27.0.24:3000/m5-status')
             .then(response => response.json())
             .then(data => {
                 let statusDiv = document.getElementById('status');
                 statusDiv.innerHTML = '';
-                for (let user of data) {
+
+                let currentTime = Date.now();
+                let lastUpdated = new Date(currentTime).toLocaleString();
+                document.getElementById('lastUpdated').textContent = "Last Updated: " + lastUpdated;
+
+                for (let userid in data) {
                     let userDiv = document.createElement('div');
                     let currentTime = Date.now();
-                    let status = user.status;
-                    let userid = user.username;  // Fetch username from the user object
-                    if (currentTime - Date.parse(user.gracePeriodEnd) > 10 * 60 * 1000) { // 10 minutes
+
+                    let status = data[userid].status;
+                    if (currentTime - data[userid].timestamp > 10 * 60 * 1000) { // 10 minutes
                         status = 'offline';
                     }
-                    else if (exceptions[userid] && Date.now() < exceptions[userid]) {
-                        status = 'exception';
-                    }
+
                     userDiv.classList.add('user-bar');
                     if (status === 'ontask') {
                         userDiv.classList.add('status-green');
                     } else if (status === 'grace') {
                         userDiv.classList.add('status-orange');
-                    } else if (status === 'exception') {
-                        userDiv.classList.add('status-blue');
                     } else if (status === 'offtask') {
                         userDiv.classList.add('status-red');
-                        notifyUserOffTask(userid);
                     }
+
                     userDiv.innerHTML = `
-                        <img class="user-avatar" src="avatar_${userid}.png" alt="User avatar">
+                        <div class="user-avatar" style="background-image: url('http://example.com/path/to/avatar/${userid}.jpg');"></div>
                         <div class="user-info">
                             <span class="user-id"><strong>User:</strong> ${userid}</span>
                             <span class="status-text"><strong>Status:</strong> ${status}</span>
@@ -127,39 +160,10 @@
             .catch(error => console.error('Error:', error));
         }
 
-
-        function notifyUserOffTask(userid) {
-            // Check if the browser supports notifications
-            if (!("Notification" in window)) {
-                alert("This browser does not support system notifications");
-            }
-            // Check whether notification permissions have already been granted
-            else if (Notification.permission === "granted") {
-                // If it's okay, let's create a notification
-                let notification = new Notification(`User ${userid} is off task!`);
-            }
-            // Otherwise, we need to ask the user for permission
-            else if (Notification.permission !== "denied") {
-                Notification.requestPermission().then(function (permission) {
-                    // If the user accepts, let's create a notification
-                    if (permission === "granted") {
-                        let notification = new Notification(`User ${userid} is off task!`);
-                    }
-                }); 
-            }
-        }
-
-        let exceptions = {};
-
-        function setException() {
-            let userid = document.getElementById('exceptionUserid').value;
-            let duration = document.getElementById('exceptionDuration').value;
-            exceptions[userid] = Date.now() + duration * 60 * 1000;  // current time + duration
-        }
-
         fetchStatus();
-        setInterval(fetchStatus, 10 * 1000);  // Refresh status every minute
-
+        setInterval(fetchStatus, 30 * 1000);  // Refresh status every minute
     </script>
+    <p class="disclaimer">Please note that all the data on this site is subject to terms and conditions. Your use of this site constitutes your agreement to abide by these terms. Some Data may take 1-2 seconds to update, depending on how many users are currently using the system. Please note that The students' status ONLY updates when info is sent from the student. This means that if the student has been on task for 10 minutes, it will show "on task" for those 10 minutes. Please note that this is normal. If you find a bug or glitch in the system, or have any question regarding the system and its usage, please visit this website for the manual: 'https://github.com/mathieufitzgerald/lg-task-monitor', or contact mat at: info@matfit.ch</p>
 </body>
 </html>
+
