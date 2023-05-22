@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -56,7 +57,7 @@
         button {
             padding: 1rem 2rem;
             border: none;
-            border-radius: 12px;
+            border-radius: 25px;
             background-color: #007BFF;
             color: white;
             font-size: 1rem;
@@ -81,6 +82,10 @@
 
         .status-red {
             border-left: 5px solid #ff5a5a;
+        }
+
+        .status-purple {
+            border-left: 5px solid purple;
         }
 
         .disclaimer {
@@ -111,14 +116,137 @@
             font-size: 14px;
         }
 
+        #sidebar {
+            position: fixed;
+            right: -100%;  /* Change this */
+            width: 250px;  /* Change this */
+            height: 25vh;
+            bottom: 0;
+            overflow: hidden;
+            transition: right 1.5s ease;  /* Change this */
+            background-color: #e7e7e7;
+            padding: 20px;
+            border-radius: 50px;
+            box-sizing: border-box;
+        }
+
+        #sidebar.open {
+            right: 0;
+        }
+
+        #cog {
+            position: fixed;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+        }
+
+        #exception-form {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+        }
+
+        #exception-form .form-content {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 300px; /* adjust according to your preference */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        #exception-form input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #exception-form button:hover {
+            background-color: #0056b3;
+        }
+
+        #exception-form .cancel-button {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #ff5a5a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        #exception-form button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 20px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #sidebar button {
+            margin-bottom: 10px;
+            border-radius: 25px;
+        }
+
+        html {
+            overflow-y: scroll;
+        }
+
+
     </style>
 </head>
 <body>
     <h1>LG Task Management Console</h1>
     <button onclick="fetchStatus()">Refresh Status</button>
+    <img id="cog" src="images/2.png" alt="settings" onclick="toggleSidebar()">
     <div id="lastUpdated"></div>
     <div class="status" id="status"></div>
+    <div id="sidebar">
+        <button onclick="showExceptionForm()">Exceptions</button>
+        <button>Settings</button>
+        <button>Logout</button>
+    </div>
+    
+    <div id="exception-form">
+        <div class="form-content">
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username">
+            </div>
+            <div>
+                <label for="time">Time (mins):</label>
+                <input type="text" id="time">
+            </div>
+            <button onclick="setException()">Set Exception</button>
+        </div>
+        <div class="cancel-button" onclick="hideExceptionForm()">X</div>
+    </div>    
     <script>
+        let graceCount = {};  // Store count of grace periods for each user
+        let graceStart = {};  // Store start time of grace period for each user
+
         function fetchStatus() {
             fetch('http://10.27.0.24:3000/m5-status')
             .then(response => response.json())
@@ -132,11 +260,33 @@
 
                 for (let userid in data) {
                     let userDiv = document.createElement('div');
-                    let currentTime = Date.now();
 
                     let status = data[userid].status;
+                    if (exceptions[userid] === 'exception' && Date.now() <= exceptionExpiration[userid]) {
+                        status = 'exception';
+                    } else {
+                        delete exceptions[userid];
+                        delete exceptionExpiration[userid];
+                    }
                     if (currentTime - data[userid].timestamp > 10 * 60 * 1000) { // 10 minutes
                         status = 'offline';
+                        graceCount[userid] = 0;  // Reset grace count when user is offline
+                    } else if (status === 'grace') {
+                        if (graceCount[userid] == null) {
+                            graceCount[userid] = 0;
+                        }
+                        if (graceStart[userid] == null) {
+                            graceStart[userid] = currentTime;
+                        }
+                        if (currentTime - graceStart[userid] > 2 * 60 * 1000) { // 2 minutes
+                            status = 'grace (extended)';
+                        }
+                        graceCount[userid]++;
+                        if (graceCount[userid] > 1) {  // More than 1 grace period in the last hour
+                            status = 'grace (extended)';
+                        }
+                    } else {
+                        graceStart[userid] = null;  // Reset grace start time when user is not in grace period
                     }
 
                     userDiv.classList.add('user-bar');
@@ -146,8 +296,9 @@
                         userDiv.classList.add('status-orange');
                     } else if (status === 'offtask') {
                         userDiv.classList.add('status-red');
+                    } else if (status === 'grace (extended)') {
+                        userDiv.classList.add('status-purple');
                     }
-
                     userDiv.innerHTML = `
                         <div class="user-avatar" style="background-image: url('http://example.com/path/to/avatar/${userid}.jpg');"></div>
                         <div class="user-info">
@@ -160,10 +311,54 @@
             .catch(error => console.error('Error:', error));
         }
 
+        function notifyUserOffTask(userid) {
+            /* Notification function goes here */
+        }
+
+        let exceptions = {};
+
+        function setException() {
+            let username = document.getElementById('username').value;
+            let time = document.getElementById('time').value;
+
+            exceptions[username] = 'exception';
+            exceptionExpiration[username] = Date.now() + time * 60 * 1000;
+
+            alert(`Successfully set exception for user ${username}, time: ${time} minutes.`);
+            document.getElementById('exception-form').style.display = 'none';
+        }
+
         fetchStatus();
-        setInterval(fetchStatus, 30 * 1000);  // Refresh status every minute
+        setInterval(fetchStatus, 10 * 1000);  // Refresh status every minute
+
+        function toggleSidebar() {
+            let sidebar = document.getElementById('sidebar');
+            if(sidebar.style.right === '0px') {
+                sidebar.style.right = '-100%';
+            } else {
+                sidebar.style.right = '0px';
+            }
+        }
+
+        function showExceptionForm() {
+            document.getElementById('exception-form').style.display = 'flex';
+            toggleSidebar();
+        }
+
+        function setException() {
+            let username = document.getElementById('username').value;
+            let time = document.getElementById('time').value;
+
+            // Do your exception handling here...
+
+            alert(`Successfully set exception for user ${username}, time: ${time} minutes.`);
+            document.getElementById('exception-form').style.display = 'none';
+        }
+
+        function hideExceptionForm() {
+            document.getElementById('exception-form').style.display = 'none';
+        }
     </script>
     <p class="disclaimer">Please note that all the data on this site is subject to terms and conditions. Your use of this site constitutes your agreement to abide by these terms. Some Data may take 1-2 seconds to update, depending on how many users are currently using the system. Please note that The students' status ONLY updates when info is sent from the student. This means that if the student has been on task for 10 minutes, it will show "on task" for those 10 minutes. Please note that this is normal. If you find a bug or glitch in the system, or have any question regarding the system and its usage, please visit this website for the manual: 'https://github.com/mathieufitzgerald/lg-task-monitor', or contact mat at: info@matfit.ch</p>
 </body>
 </html>
-
