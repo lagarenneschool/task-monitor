@@ -18,3 +18,20 @@ you will need mongodb or any other db server in order to store "gracePeriod", "u
 pretty simple. you need a mongodb server, another server to run everything, and clients, oh and a bunch if time.
 
 setting up the server
+`apt install node npm && npm install express mongodb`
+
+`node server.js`
+
+dont forget to change and add your mongodb url and server url in the server.js file
+
+# setting up the extension
+
+same goes for the extension, you need to add your server url/endpoints before being able to pack the extension and install in on the clients' computers.
+
+# working the managemen console
+
+its pretty self explanatory. refresh strus button at the top, shows when everything was last uodated too.
+the console updates every 30 seconds with the server too.
+when a user is ontask, they will be in green. offtask, red. grace period, orange. grace (extended), purple. presumed off, dark gray. offline? light gray.
+
+settings will allow you to add the exception on a user. please mot as of now, the exception is only management xonsole side, and not server side.
