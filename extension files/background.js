@@ -1,15 +1,17 @@
 let gracePeriod = false;
 let gracePeriodStart = null;
+let gracePeriodElapsed = 0;
+let gracePeriodTimeout;
 let currentStatus = 'ontask';
 
 chrome.runtime.onStartup.addListener(() => {
     sendStatusToServer(currentStatus);
-    chrome.alarms.clearAll(); // Clear all alarms here
+    chrome.alarms.clearAll();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
     sendStatusToServer(currentStatus);
-    chrome.alarms.clearAll(); // And here
+    chrome.alarms.clearAll();
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -23,6 +25,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 sendStatusToServer(newStatus);
                 chrome.alarms.clear('gracePeriodAlarm');
                 gracePeriod = false;
+                if (gracePeriodStart) {
+                    gracePeriodElapsed += Date.now() - gracePeriodStart;
+                    gracePeriodStart = null;
+                    clearTimeout(gracePeriodTimeout);
+                }
                 console.log('On task');
                 currentStatus = newStatus;
                 chrome.alarms.clear('offTaskAlarm');
@@ -33,7 +40,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 if (!gracePeriod) {
                     gracePeriod = true;
                     gracePeriodStart = Date.now();
-                    chrome.alarms.create('gracePeriodAlarm', { delayInMinutes: 2 });
+                    gracePeriodTimeout = setTimeout(() => {
+                        gracePeriod = false;
+                        gracePeriodStart = null;
+                        sendStatusToServer('offtask', null, true);
+                    }, 2 * 60 * 1000 - gracePeriodElapsed);
                     sendStatusToServer(newStatus, gracePeriodStart);
                     console.log('In grace period');
                     currentStatus = newStatus;
@@ -48,10 +59,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'gracePeriodAlarm') {
         gracePeriod = false;
         if (currentStatus === 'grace') {
-            // Add a delay before changing the status to 'offtask'
             setTimeout(() => {
                 console.log('Before fetch request');
-                sendStatusToServer('offtask', null, true);  // pass true for gracePeriodEnded
+                sendStatusToServer('offtask', null, true);
                 console.log('After fetch request');
                 console.log('Off task');
                 currentStatus = 'offtask';
@@ -75,7 +85,7 @@ function sendStatusToServer(status, gracePeriodStart, gracePeriodEnded = false, 
         body.gracePeriodStart = gracePeriodStart;
     }
 
-    fetch('http://nodejs-url:3000/m5-status', {
+    fetch('http://178.198.237.37:3000/m5-status', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -85,7 +95,6 @@ function sendStatusToServer(status, gracePeriodStart, gracePeriodEnded = false, 
     .then(response => response.json())
     .then(data => {
         console.log(data);
-        // update currentStatus based on the response from the server
         currentStatus = data.status;
     })
     .catch((error) => {
