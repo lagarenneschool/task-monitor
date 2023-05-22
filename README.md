@@ -12,3 +12,9 @@ the credentials for the popup.html are also local, this is because it is just a 
 you will need mongodb or any other db server in order to store "gracePeriod", "user" and "status" values in. this is, unless you want to be an idiot and make evrything run locally. if you choose to do so, to you i say good luck and have a nice time crying at your desk.
 
 1x 2 minute grace period every hour, you can change it to be what you want, personally i chose 2 minutes but you can choose any value betweek 1-59, unless you change it to every 2-24 hours.
+
+# Usage Instructions 
+
+pretty simple. you need a mongodb server, another server to run everything, and clients, oh and a bunch if time.
+
+setting up the server
