@@ -1,7 +1,6 @@
 let gracePeriod = false;
 let gracePeriodStart = null;
 let gracePeriodElapsed = 0;
-let gracePeriodTimeout;
 let currentStatus = 'ontask';
 
 chrome.runtime.onStartup.addListener(() => {
@@ -28,26 +27,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 if (gracePeriodStart) {
                     gracePeriodElapsed += Date.now() - gracePeriodStart;
                     gracePeriodStart = null;
-                    clearTimeout(gracePeriodTimeout);
                 }
                 console.log('On task');
                 currentStatus = newStatus;
-                chrome.alarms.clear('offTaskAlarm');
             }
         } else {
-            newStatus = gracePeriod ? 'grace' : 'offtask';
+            newStatus = 'offtask';
             if (newStatus !== currentStatus) {
+                sendStatusToServer(newStatus);
                 if (!gracePeriod) {
                     gracePeriod = true;
                     gracePeriodStart = Date.now();
-                    gracePeriodTimeout = setTimeout(() => {
-                        gracePeriod = false;
-                        gracePeriodStart = null;
-                        sendStatusToServer('offtask', null, true);
-                    }, 2 * 60 * 1000 - gracePeriodElapsed);
-                    sendStatusToServer(newStatus, gracePeriodStart);
+                    chrome.alarms.create('gracePeriodAlarm', { delayInMinutes: 2 - gracePeriodElapsed / (60 * 1000) });
                     console.log('In grace period');
-                    currentStatus = newStatus;
+                    currentStatus = 'grace';
                 }
             }
         }
@@ -58,15 +51,16 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     console.log(`Alarm fired: ${alarm.name}`);
     if (alarm.name === 'gracePeriodAlarm') {
         gracePeriod = false;
-        if (currentStatus === 'grace') {
-            setTimeout(() => {
-                console.log('Before fetch request');
-                sendStatusToServer('offtask', null, true);
-                console.log('After fetch request');
-                console.log('Off task');
-                currentStatus = 'offtask';
-            }, 1000);
+        gracePeriodElapsed += (Date.now() - gracePeriodStart) / (60 * 1000);
+        if (gracePeriodElapsed >= 2) {
+            sendStatusToServer('offtask', null, true);
+            console.log('Off task');
+            currentStatus = 'offtask';
+            gracePeriodElapsed = 0;
+        } else {
+            chrome.alarms.create('gracePeriodAlarm', { delayInMinutes: 2 - gracePeriodElapsed });
         }
+        gracePeriodStart = Date.now();
     }
 });
 
@@ -80,10 +74,6 @@ function sendStatusToServer(status, gracePeriodStart, gracePeriodEnded = false, 
         gracePeriodEnded: gracePeriodEnded,
         gracePeriodEnd: gracePeriodEnd
     };
-
-    if (status === 'grace') {
-        body.gracePeriodStart = gracePeriodStart;
-    }
 
     fetch('http://178.198.237.37:3000/m5-status', {
         method: 'POST',
